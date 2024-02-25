@@ -72,17 +72,59 @@
 </div>
 </div>
 
+<div class="relative overflow-x-auto">
+  <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
 
-<div class='m-12 space-y-6'>
-  
-   
-        
-  <div class="bg-green-100 border-t border-b border-green-500 text-green-700 px-4 py-3" role="alert">
-      <p class="font-bold">Important message</p>
-      <p class="text-sm">{{messege}}</p>
-  </div>
-  
- 
+      <tbody>
+          <tr class="bg-white dark:bg-gray-800">
+              <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                  URL
+              </th>
+              <td class="px-6 py-4">
+                  {{url}}
+              </td>
+          </tr>
+
+          <tr class="bg-white dark:bg-gray-800">
+              <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                  IP address
+              </th>
+              <td class="px-6 py-4">
+                  {{ip}}
+              </td>
+          </tr>
+          <tr class="bg-white dark:bg-gray-800">
+            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+              vulnerability
+            </th>
+            <td class="px-6 py-4">
+                {{vern}}
+            </td>
+          </tr>
+          <tr class="bg-white dark:bg-gray-800">
+            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+              External Resourses
+            </th>
+            <td class="px-6 py-4">
+                {{exr}}
+            </td>
+          </tr>
+          <tr class="bg-white dark:bg-gray-800">
+            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+              CSRF
+            </th>
+            <td class="px-6 py-4">
+                {{csrf}}
+            </td>
+          </tr>
+      </tbody>
+      <tfoot>
+          <tr class="font-semibold text-gray-900 dark:text-white">
+              <th scope="row" class="px-6 py-3 text-base">Total</th>
+              <td class="px-6 py-3">21,000</td>
+          </tr>
+      </tfoot>
+  </table>
 </div>
 
   

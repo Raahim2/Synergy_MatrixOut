@@ -31,8 +31,11 @@ def check_vulnerability(host, port):
     return messege
 
 def getip(url):
-    ip_address = socket.gethostbyname(url)
-    return ip_address
+    try:
+        ip_address = socket.gethostbyname(url)
+        return ip_address
+    except socket.gaierror as e:
+        return f"Error: {e}"
 
 def count_external_resources(url):
     """
@@ -71,6 +74,7 @@ def detect_csrf(url):
 
 print(gettitle('http://google.com'))
 print(check_vulnerability("www.google.com" ,80))
+
 print(getip('www.google.com'))
 css,js=count_external_resources('http://github.com')
 print(f"CSS = {css} and JS = {js}")
