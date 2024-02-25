@@ -19,6 +19,8 @@ def index(request):
         css , js = functions.count_external_resources(url)
         exresour= f"CSS = {css} and JS = {js}"
         csrf = functions.detect_csrf(url)
+        xss = functions.check_xss(url)
+        sql = functions.is_sql_injection(url)
 
         context = {
         'url': url,
@@ -26,7 +28,9 @@ def index(request):
         'vern' : vern,
         'ip':ip,
         'exr':exresour,
-        'csrf':csrf
+        'csrf':csrf,
+        'xss':xss,
+        'sql':sql
     }
 
 

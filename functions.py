@@ -72,10 +72,44 @@ def detect_csrf(url):
         messege = "CSRF Vulnerability Possibly Detected"
     return messege
 
-print(gettitle('http://google.com'))
-print(check_vulnerability("www.google.com" ,80))
+def check_xss(url):
+    # Send a GET request to the URL
+    response = requests.get(url)
+    
+    # Parse the HTML content
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Find all input fields and iterate over them
+    for input_field in soup.find_all('input'):
+        # Check if the input field has an attribute vulnerable to XSS
+        if 'value' in input_field.attrs:
+            messege =  f"Potential XSS vulnerability found in input field: {input_field}"
+            return messege
+    
+    # Find all output contexts (e.g., HTML tags) and iterate over them
+    for output_context in soup.find_all():
+        # Check if the output context contains user-controlled data
+        if output_context.string:
+            # Here, you can add more sophisticated checks to detect potential XSS
+            if "<script>" in output_context.string:
+                messege =  f"Potential XSS vulnerability found in output context: {output_context}"
+                return messege
 
-print(getip('www.google.com'))
-css,js=count_external_resources('http://github.com')
-print(f"CSS = {css} and JS = {js}")
-print(detect_csrf('http://google.com'))
+import sqlite3
+
+def is_sql_injection(query):
+    # Sample vulnerable SQL query
+    vulnerable_query = "SELECT * FROM users WHERE username='%s' AND password='%s'"
+
+    # Parameters to test for SQL injection
+    malicious_input = ["' OR '1'='1", "' OR '1'='1' --"]
+
+    for malicious_param in malicious_input:
+        test_query = vulnerable_query % (malicious_param, malicious_param)
+        if query.lower() in test_query.lower():
+            return "Potential SQL injection detected!"
+    return "Query seems safe."
+
+
+
+is_sql_injection('https://www.google.com?')
