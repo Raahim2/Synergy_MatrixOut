@@ -110,6 +110,3 @@ def is_sql_injection(query):
             return "Potential SQL injection detected!"
     return "Query seems safe."
 
-
-
-is_sql_injection('https://www.google.com?')
