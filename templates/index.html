@@ -1,144 +1,340 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FortifyWeb</title>
-    <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/Raahim2/Synergy_MatrixOut/refs/heads/main/IMG_20241102_130009.jpg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fortify Web</title>
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<style>
-   
-</style>
-<body>
-    
+    <style>
+      /* --- OVERALL ANIMATION CONTROL --- */
+      #auth-screen.is-unlocked {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .backdrop-blur-2px {
+        backdrop-filter: blur(3px);
+      } 
+      .panel {
+        position: absolute;
+        top: 0;
+        height: 100vh;
+        width: 50.5vw;
+        transition: transform 0.8s cubic-bezier(0.76, 0, 0.24, 1);
+        overflow: hidden;
+      }
+      .panel > div, .panel svg {
+        width: 100%;
+        height: 100%;
+      }
+      .panel-left { right: 50%; }
+      .panel-right { left: 50%; }
 
-<nav class="bg-white border-gray-200 dark:bg-gray-900">
-    <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
-    <a href="" class="flex items-center space-x-3 rtl:space-x-reverse">
-        <img src="https://flowbite.com/docs/images/logo.svg" class="h-8" alt="Flowbite Logo" />
-        <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FortifyWeb</span>
-    </a>
-    <div class="flex md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse">
-        <button type="button" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Get started</button>
-        <button data-collapse-toggle="navbar-cta" type="button" class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600" aria-controls="navbar-cta" aria-expanded="false">
-          <span class="sr-only">Open main menu</span>
-          <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
-              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15"/>
+      /* UNLOCKED state: slide the panels off-screen */
+      #auth-screen.is-unlocked .panel-left { transform: translateX(-100%); }
+      #auth-screen.is-unlocked .panel-right { transform: translateX(100%); }
+
+      /* Transition for the central fingerprint button */
+      .fingerprint-core {
+        transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+      }
+      #auth-screen.is-unlocked .fingerprint-core {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+
+      /* --- SCANNING & HOVER LOGIC --- */
+      .dull-state-layer, .active-state-layer {
+        transition: opacity 0.4s ease-in-out;
+      }
+      .active-state-layer { opacity: 0; }
+      .dull-state-layer { opacity: 1; }
+      
+      #animation-group:hover .active-state-layer,
+      #animation-group.is-scanning .active-state-layer {
+        opacity: 1;
+      }
+      #animation-group:hover .dull-state-layer,
+      #animation-group.is-scanning .dull-state-layer {
+        opacity: 0;
+      }
+      
+      .panel-border { transition: stroke 0.4s, fill 0.4s; }
+      #animation-group:hover .panel-border,
+      #animation-group.is-scanning .panel-border {
+        fill: rgba(255, 255, 255, 0.05);
+        stroke: rgba(255, 255, 255, 0.1);
+      }
+      
+      /* --- SCANNING ANIMATION (ON CLICK) --- */
+      .scan-line {
+        transition: transform 0.5s ease-in-out;
+      }
+      #animation-group.is-scanning .scan-line {
+        transform: translateY(4.2rem);
+        transition-delay: 0.2s;
+      }
+      
+      .fp-glow-line {
+        transition: stroke-dasharray 0.5s ease-in-out;
+      }
+      #animation-group.is-scanning .fp-glow-line-1 { transition-delay: 0.2s; }
+      #animation-group.is-scanning .fp-glow-line-2 { transition-delay: 0.25s; }
+      #animation-group.is-scanning .fp-glow-line-3 { transition-delay: 0.3s; }
+      #animation-group.is-scanning .fp-glow-line-4 { transition-delay: 0.35s; }
+      #animation-group.is-scanning .fp-glow-line-5 { transition-delay: 0.4s; }
+      
+      #animation-group.is-scanning .fp-glow-line {
+        stroke-dasharray: 1 2;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-800 text-white overflow-y-auto">
+
+    <!-- === AUTHENTICATION OVERLAY === -->
+    <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900 transition-opacity duration-700 ease-in-out cursor-pointer {% if form_submitted %}is-unlocked{% endif %}">
+      
+      <div class="absolute inset-0 active-state-layer"
+        style="
+          background-image: radial-gradient(circle at 1px 1px, #5de3ff1a 1px, transparent 0);
+          background-size: 0.75rem 0.75rem;
+        ">
+      </div>
+
+      <!-- Left Side Panel (Door) -->
+      <div class="panel panel-left">
+        <div class="relative -scale-x-100">
+          <svg viewBox="0 0 224 280" fill="none" aria-hidden="true" class="absolute inset-0 h-full w-full">
+            <path class="panel-border fill-zinc-800 stroke-zinc-700" d="M8 .25a8 8 0 0 0-8 8v91.704c0 2.258.954 4.411 2.628 5.927l10.744 9.738A7.998 7.998 0 0 1 16 121.546v36.408a7.998 7.998 0 0 1-2.628 5.927l-10.744 9.738A7.998 7.998 0 0 0 0 179.546v92.204a8 8 0 0 0 8 8h308a8 8 0 0 0 8-8V8.25a8 8 0 0 0-8-8H8Z"></path>
           </svg>
-      </button>
-    </div>
-    <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-cta">
-      <ul class="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
-        <li>
-          <a href="#" class="block py-2 px-3 md:p-0 text-white bg-blue-700 rounded md:bg-transparent md:text-blue-700 md:dark:text-blue-500" aria-current="page">Home</a>
-        </li>
-        <li>
-          <a href="#" class="block py-2 px-3 md:p-0 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:text-blue-500 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">About</a>
-        </li>
-        <li>
-          <a href="#" class="block py-2 px-3 md:p-0 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 d:dark:hover:text-blue-500 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Services</a>
-        </li>
-        <li>
-          <a href="#" class="block py-2 px-3 md:p-0 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:text-blue-500 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Contact</a>
-        </li>
-      </ul>
-    </div>
-    </div>
-  </nav>
-
-
-<div class="flex justify-center my-10">
-<div class=" max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 md:p-8 dark:bg-gray-800 dark:border-gray-700 sp ">
-    <form class="space-y-6" method="post">
-        {% csrf_token %}        
-        <h5 class="text-xl font-medium text-gray-900 dark:text-white text-center">Deep Scan</h5>
-        <div>
-            <label for="target" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Target Website</label>
-            <input type="url" name="text" id="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" placeholder="www.example.com" required />
         </div>
+      </div>
+      
+      <!-- Right Side Panel (Door) -->
+      <div class="panel panel-right">
+        <div class="relative">
+          <svg viewBox="0 0 224 280" fill="none" aria-hidden="true" class="absolute inset-0 h-full w-full">
+            <path class="panel-border fill-zinc-800 stroke-zinc-700" d="M8 .25a8 8 0 0 0-8 8v91.704c0 2.258.954 4.411 2.628 5.927l10.744 9.738A7.998 7.998 0 0 1 16 121.546v36.408a7.998 7.998 0 0 1-2.628 5.927l-10.744 9.738A7.998 7.998 0 0 0 0 179.546v92.204a8 8 0 0 0 8 8h308a8 8 0 0 0 8-8V8.25a8 8 0 0 0-8-8H8Z"></path>
+          </svg>
+        </div>
+      </div>
 
-        <div class="flex items-start">
-            <div class="flex items-start">
-                <div class="flex items-center h-5">
-                    <input id="remember" type="checkbox" value="" class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800" required />
-                </div>
-                <label for="remember" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">I am authorized to scan this target and I agree with the Terms of Service.
-                </label>
+      <!-- Main animation group -->
+      <div id="animation-group" class="group relative z-10 flex items-center justify-center">
+        <div class="relative h-[4.5rem] w-[4.5rem]">
+          <div id="fingerprint-button" class="fingerprint-core absolute inset-0 rounded-full">
+            <!-- LAYERS for STANDBY STATE -->
+            <div class="dull-state-layer absolute inset-0 z-10 rounded-full bg-zinc-800 shadow-[0_1px_theme(colors.white/0.03)]"></div>
+            <div class="dull-state-layer absolute inset-1 z-10 rounded-full bg-zinc-700/60 shadow-inner shadow-black/50"></div>
+            <div class="dull-state-layer absolute inset-[calc(theme(inset.1)+1px)] z-10 rounded-full bg-gradient-to-b from-zinc-700 to-zinc-800"></div>
+            <!-- LAYERS for ACTIVE/HOVER STATE -->
+            <div class="active-state-layer absolute inset-0 z-10 rounded-full bg-gray-950/60"></div>
+            <div class="active-state-layer absolute inset-1 z-10 rounded-full bg-gray-800 bg-gradient-to-tr from-white/0 via-white/0 to-white/10 shadow-[0_2px_12px_theme(colors.black/0.5)]"></div>
+            <div class="active-state-layer absolute inset-1 z-10 rounded-full shadow-[inset_0_0_0_1.5px_#5DE3FF]"></div>
+            <div class="active-state-layer absolute inset-1 z-10 rounded-full bg-gradient-to-tr from-[#64E5FF]/20 via-[#64E5FF]/0 to-[#64E5FF]/0"></div>
+            <div class="active-state-layer absolute inset-[calc(theme(inset.1)+1px)] z-10 rounded-full bg-gradient-to-b from-gray-850 to-gray-750 relative overflow-hidden">
+              <div class="scan-line absolute top-0 left-0 w-full h-1.5 bg-sky-300/80 blur-sm -translate-y-full"></div>
             </div>
+            <!-- Fingerprint SVG icon -->
+            <svg viewBox="0 0 44 44" fill="none" aria-hidden="true" class="absolute left-1/2 top-1/2 z-20 ml-[calc(theme(width.11)/-2)] mt-[calc(theme(height.11)/-2)] h-11 w-11">
+                <g class="dull-state-layer">
+                    <path class="stroke-zinc-500" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M32.147 27.52c0-5.471-4.543-9.908-10.147-9.908s-10.147 4.437-10.147 9.909c0 3.744 1.329 7.184 3.551 9.897a16.152 16.152 0 0 0 2.549 2.488m21.297-22.83C35.67 11.45 29.283 7.704 22 7.704c-7.283 0-13.67 3.746-17.25 9.372M34.176 5.785A25.735 25.735 0 0 0 22 2.75c-4.413 0-8.562 1.1-12.176 3.035M28.088 40.25c-6.322-.953-11.162-6.29-11.162-12.73 0-2.735 2.272-4.953 5.074-4.953s5.073 2.218 5.073 4.954c0 2.736 2.272 4.954 5.074 4.954s5.074-2.218 5.074-4.954c0-8.209-6.815-14.863-15.221-14.863-8.406 0-15.22 6.654-15.22 14.863 0 2.505.634 4.865 1.755 6.935M22 26.53c0 5.472 4.543 9.908 10.147 9.908.695 0 1.374-.068 2.03-.198"></path>
+                </g>
+                <g class="active-state-layer">
+                    <path class="fp-glow-line fp-glow-line-1" stroke="#5DE3FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" pathLength="1" stroke-dasharray="0 2" d="M39.25 17.076C35.67 11.45 29.283 7.704 22 7.704c-7.283 0-13.67 3.746-17.25 9.372"></path>
+                    <path class="fp-glow-line fp-glow-line-2" stroke="#5DE3FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" pathLength="1" stroke-dasharray="0 2" d="M34.177 5.785A25.735 25.735 0 0 0 22.001 2.75c-4.413 0-8.562 1.1-12.177 3.035"></path>
+                    <path class="fp-glow-line fp-glow-line-3" stroke="#5DE3FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" pathLength="1" stroke-dasharray="0 2" d="M32.148 27.52c0-5.471-4.543-9.908-10.147-9.908-5.605 0-10.148 4.437-10.148 9.909 0 3.744 1.33 7.184 3.552 9.897a16.152 16.152 0 0 0 2.548 2.488"></path>
+                    <path class="fp-glow-line fp-glow-line-4" stroke="#5DE3FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" pathLength="1" stroke-dasharray="0 2" d="M22 26.53c0 5.472 4.543 9.908 10.147 9.908.695 0 1.374-.068 2.03-.198"></path>
+                    <path class="fp-glow-line fp-glow-line-5" stroke="#5DE3FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" pathLength="1" stroke-dasharray="0 2" d="M28.088 40.25c-6.322-.953-11.162-6.29-11.162-12.73 0-2.735 2.272-4.953 5.074-4.953s5.073 2.218 5.073 4.954c0 2.736 2.272 4.954 5.074 4.954s5.074-2.218 5.074-4.954c0-8.209-6.815-14.863-15.221-14.863-8.406 0-15.22 6.654-15.22 14.863 0 2.505.634 4.865 1.755 6.935"></path>
+                </g>
+            </svg>
+            <div class="active-state-layer absolute inset-1 z-20 rounded-full mix-blend-overlay [clip-path:circle(50%)]">
+              <div class="absolute inset-0 bg-gradient-to-br from-white/0 from-[30%] via-sky-100/70 to-white/0 to-[70%]" style="transform: translate(-1.5rem, -1.5rem) scale(1.5);"></div>
+            </div>
+          </div>
         </div>
- 
-        <button type="submit" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Start Scan</button>
-    </form>
-</div>
-</div>
+      </div>
+    </div>
 
-<div class="relative overflow-x-auto">
-  <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+    <!-- === YOUR WEBSITE CONTENT GOES HERE === -->
+    <div class="overflow-hidden">
+    
+      {% if form_submitted %}
+      <!-- ========================================================= -->
+      <!--  THIS BLOCK ONLY SHOWS IF THE FORM HAS BEEN SUBMITTED     -->
+      <!-- ========================================================= -->
+      <div class="relative overflow-x-auto py-16 px-4">
+        <h1 class="text-4xl font-bold text-center text-white mb-8">Scan Results</h1>
+        <div class="max-w-4xl mx-auto rounded-lg shadow-lg overflow-hidden">
+            <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                <tbody class="bg-white dark:bg-gray-800">
+                    <tr class="border-b dark:border-gray-700">
+                        <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                            URL
+                        </th>
+                        <td class="px-6 py-4">
+                            {{url}}
+                        </td>
+                    </tr>
+                    <tr class="border-b dark:border-gray-700">
+                        <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                            IP address
+                        </th>
+                        <td class="px-6 py-4">
+                            {{ip}}
+                        </td>
+                    </tr>
+                    <tr class="border-b dark:border-gray-700">
+                      <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        Vulnerability
+                      </th>
+                      <td class="px-6 py-4">
+                          {{vern}}
+                      </td>
+                    </tr>
+                    <tr class="border-b dark:border-gray-700">
+                      <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        External Resources
+                      </th>
+                      <td class="px-6 py-4">
+                          {{exr}}
+                      </td>
+                    </tr>
+                    <tr class="border-b dark:border-gray-700">
+                      <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        CSRF
+                      </th>
+                      <td class="px-6 py-4">
+                          {{csrf}}
+                      </td>
+                    </tr>
+                    <tr class="border-b dark:border-gray-700">
+                      <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        XSS
+                      </th>
+                      <td class="px-6 py-4">
+                          {{xss}}
+                      </td>
+                    </tr>
+                    <tr> <!-- Last row, no border -->
+                      <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        SQL Injection
+                      </th>
+                      <td class="px-6 py-4">
+                          {{sql}}
+                      </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+      </div>
 
-      <tbody>
-          <tr class="bg-white dark:bg-gray-800">
-              <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                  URL
-              </th>
-              <td class="px-6 py-4">
-                  {{url}}
-              </td>
-          </tr>
+      {% else %}
+      <!-- ========================================================= -->
+      <!--  THIS BLOCK ONLY SHOWS ON THE INITIAL VISIT (GET)         -->
+      <!-- ========================================================= -->
+      <div class="relative isolate overflow-hidden bg-gray-50 h-screen flex items-center justify-center">
+        <div class="absolute inset-0 -z-10">
+          <div class="absolute -top-8 right-1/2 sm:top-5 aspect-[969/887] w-[969px]">
+            <picture>
+              <source srcset="https://clerk.com/_next/static/media/circuit-lines@2xl.ee1ad3dd.webp" type="image/webp" />
+              <source srcset="https://clerk.com/_next/static/media/circuit-lines@2xr.0351fb9a.png" type="image/png" />
+              <img alt="" width="1938" height="1774" decoding="async" data-nimg="1" class="absolute inset-0 h-full w-full" style="color: transparent" src="https://clerk.com/_next/static/media/circuit-lines@2xl.ee1ad3dd.webp"/>
+            </picture>
+            <div class="absolute inset-0">
+              <canvas class="absolute inset-0 h-full w-full" aria-hidden="true" width="403" height="363" style="left: calc(31.5rem); top: calc(1.5625rem); width: calc(25.1875rem); height: calc(22.6875rem);"></canvas>
+              <svg width="0" height="0" aria-hidden="true"><path d="M296 224V187.314C296 185.192 296.843 183.157 298.343 181.657L352.657 127.343C354.157 125.843 356.192 125 358.314 125H383"></path></svg>
+              <svg width="0" height="0" aria-hidden="true"><path d="M294 226H209.314C207.192 226 205.157 226.843 203.657 228.343L86.8431 345.157C85.3428 346.657 83.308 347.5 81.1863 347.5H20"></path></svg>
+              <svg width="0" height="0" aria-hidden="true"><path d="M54 290V133.657C54 132.596 54.4214 131.579 55.1716 130.828L89.8284 96.1716C90.5786 95.4214 91 94.404 91 93.3431V16"></path></svg>
+              <svg width="0" height="0" aria-hidden="true"><path d="M287 89V70.5L314.157 43.3431C315.657 41.8429 316.5 39.808 316.5 37.6863V21"></path></svg>
+            </div>
+            <picture>
+              <source srcset="https://clerk.com/_next/static/media/circuit-components@2xl.288e1b6c.webp" type="image/webp" />
+              <source srcset="https://clerk.com/_next/static/media/circuit-components@2xr.175a3562.png" type="image/png" />
+              <img alt="" width="1938" height="1774" decoding="async" data-nimg="1" class="absolute inset-0 h-full w-full" style="color: transparent" src="https://clerk.com/_next/static/media/circuit-components@2xl.288e1b6c.webp"/>
+            </picture>
+          </div>
+          <div class="absolute -top-8 right-1/2 origin-right -scale-x-100 sm:top-5 aspect-[969/887] w-[969px]">
+            <picture>
+              <source srcset="https://clerk.com/_next/static/media/circuit-lines@2xl.ee1ad3dd.webp" type="image/webp" />
+              <source srcset="https://clerk.com/_next/static/media/circuit-lines@2xr.0351fb9a.png" type="image/png" />
+              <img alt="" width="1938" height="1774" decoding="async" data-nimg="1" class="absolute inset-0 h-full w-full" style="color: transparent" src="https://clerk.com/_next/static/media/circuit-lines@2xl.ee1ad3dd.webp"/>
+            </picture>
+            <div class="absolute inset-0">
+              <canvas class="absolute inset-0 h-full w-full" aria-hidden="true" width="403" height="363" style="left: calc(31.5rem); top: calc(1.5625rem); width: calc(25.1875rem); height: calc(22.6875rem);"></canvas>
+              <svg width="0" height="0" aria-hidden="true"><path d="M296 224V187.314C296 185.192 296.843 183.157 298.343 181.657L352.657 127.343C354.157 125.843 356.192 125 358.314 125H383"></path></svg>
+              <svg width="0" height="0" aria-hidden="true"><path d="M294 226H209.314C207.192 226 205.157 226.843 203.657 228.343L86.8431 345.157C85.3428 346.657 83.308 347.5 81.1863 347.5H20"></path></svg>
+              <svg width="0" height="0" aria-hidden="true"><path d="M54 290V133.657C54 132.596 54.4214 131.579 55.1716 130.828L89.8284 96.1716C90.5786 95.4214 91 94.404 91 93.3431V16"></path></svg>
+              <svg width="0" height="0" aria-hidden="true"><path d="M287 89V70.5L314.157 43.3431C315.657 41.8429 316.5 39.808 316.5 37.6863V21"></path></svg>
+            </div>
+            <picture>
+              <source srcset="https://clerk.com/_next/static/media/circuit-components@2xl.288e1b6c.webp" type="image/webp" />
+              <source srcset="https://clerk.com/_next/static/media/circuit-components@2xr.175a3562.png" type="image/png" />
+              <img alt="" width="1938" height="1774" decoding="async" data-nimg="1" class="absolute inset-0 h-full w-full" style="color: transparent" src="https://clerk.com/_next/static/media/circuit-components@2xl.288e1b6c.webp"/>
+            </picture>
+          </div>
+        </div>
+        <div class="absolute inset-x-0 bottom-[calc(-702/16*1rem)] top-0 -z-10 bg-[radial-gradient(154.86%_76.83%_at_50%_22.26%,theme(colors.gray.50/0.4)_8.98%,theme(colors.gray.50)_45.99%)]"></div>
+        <svg viewBox="-1000 0 3504 918" aria-hidden="true" class="absolute -top-6 left-1/2 -z-10 ml-[calc(-3504/2/16*1rem)] w-[calc(3504/16*1rem)] mix-blend-color-burn">
+          <path fill="url(#hero-gradient)" d="M3504 918H-1000V0h3504v918Z"></path>
+          <defs>
+            <radialGradient id="hero-gradient" cx="0" cy="0" r="1" gradientTransform="matrix(0 707.279 -1739.2 0 741 159.991)" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#6C47FF" stop-opacity="0.6"></stop>
+              <stop offset=".412" stop-color="#FFF963" stop-opacity=".8"></stop>
+              <stop offset=".623" stop-color="#38DAFD" stop-opacity=".6"></stop>
+              <stop offset=".919" stop-color="#6248F6" stop-opacity="0"></stop>
+            </radialGradient>
+          </defs>
+        </svg>
+        <div class="mx-auto w-full px-6 sm:max-w-[40rem] md:max-w-[48rem] md:px-8 lg:max-w-[64rem] xl:max-w-[80rem]">
+          <div class="text-center">
+            <div class="max-w-md mx-auto bg-white/10 backdrop-blur-2px p-8 rounded-xl shadow-2xl border border-white/50">
+              <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">
+                Deep Scan
+              </h2>
+              <form class="space-y-6 text-left" method="post">
+                {% csrf_token %}     
+                <div>
+                  <label for="website" class="block text-sm font-medium text-gray-800 mb-1">Target Website</label>
+                  <input type="url" id="url" name="text" placeholder="www.example.com" class="text-black block w-full px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"/>
+                </div>
+                <div class="flex items-start">
+                  <div class="flex items-center h-5 mt-1">
+                    <input id="authorization" name="authorization" type="checkbox" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"/>
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label for="authorization" class="font-medium text-gray-700">I am authorized to scan this target</label>
+                  </div>
+                </div>
+                <div>
+                  <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Start Scan
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {% endif %}
 
-          <tr class="bg-white dark:bg-gray-800">
-              <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                  IP address
-              </th>
-              <td class="px-6 py-4">
-                  {{ip}}
-              </td>
-          </tr>
-          <tr class="bg-white dark:bg-gray-800">
-            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-              vulnerability
-            </th>
-            <td class="px-6 py-4">
-                {{vern}}
-            </td>
-          </tr>
-          <tr class="bg-white dark:bg-gray-800">
-            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-              External Resourses
-            </th>
-            <td class="px-6 py-4">
-                {{exr}}
-            </td>
-          </tr>
-          <tr class="bg-white dark:bg-gray-800">
-            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-              CSRF
-            </th>
-            <td class="px-6 py-4">
-                {{csrf}}
-            </td>
-          </tr>
-          <tr class="bg-white dark:bg-gray-800">
-            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-              XSS
-            </th>
-            <td class="px-6 py-4">
-                {{xss}}
-            </td>
-          </tr>
-          <tr class="bg-white dark:bg-gray-800">
-            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-              SQL injection
-            </th>
-            <td class="px-6 py-4">
-                {{sql}}
-            </td>
-          </tr>
-      </tbody>
+    </div>
 
-  </table>
-</div>
+    <script>
+      const authScreen = document.getElementById('auth-screen');
+      const animationGroup = document.getElementById('animation-group');
+      let isUnlocking = false;
 
-  
-</body>
+      authScreen.addEventListener('click', () => {
+        if (isUnlocking) return;
+        isUnlocking = true;
+        
+        animationGroup.classList.add('is-scanning');
+
+        setTimeout(() => {
+          authScreen.classList.add('is-unlocked');
+        }, 1200); 
+      });
+    </script>
+  </body>
 </html>
